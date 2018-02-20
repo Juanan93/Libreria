@@ -1,112 +1,125 @@
-
-
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.sql.Connection;
-import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-
+import javax.sql.DataSource;
 
 @WebServlet("/consulta")
 public class Consulta extends HttpServlet {
 	private static final long serialVersionUID = 1L;
-       
-
-    public Consulta() {
-        super();
-
-    }
-
-
-	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-
-		// Recogemos el parámetro "autor" del formulario.
+	
+	DataSource pool;
+	@Override
+	public void init() throws ServletException {
 		
+		super.init();
+		
+		try {
+			InitialContext contexto = new InitialContext();
+			
+			pool = (DataSource) contexto.lookup("java:comp/env/jdbc/mysql_tiendalibros");
+			
+			if (pool == null) {
+				throw new ServletException("Error al acceder al POOL de conexiones: POOL NULL");
+			}
+			
+		} catch (NamingException e) {
+			System.out.println("Error al acceder al POOL de conexiones catch");
+			e.printStackTrace();
+		}
+	}
+
+	public Consulta() {
+		super();
+		// TODO Auto-generated constructor stub
+	}
+
+	protected void doGet(HttpServletRequest request,
+			HttpServletResponse response) throws ServletException, IOException {
+
+		// Recogemos los datos del formulario.
 		String autor = request.getParameter("autor");
-		
-		// Parametro la salida del servlet.
-		
+
+		// Preparamos la salida del servlet.
 		response.setContentType("text/html");
 		PrintWriter out = response.getWriter();
-		
-		//Objetos para la conexión y consulta a la base de datos.
-		
+
+		// Creamos los objetos de conexión a la base de datos.
 		Connection con = null;
 		PreparedStatement stmt = null;
-		
-		// Cargar el driver de MySQL
+
 		try {
-			Class.forName("com.mysql.jdbc.Dricer");
-			
-			// Credenciales para la base de datos.
-			String url = "jdbc:mysql://localhost/TiendaLibros";
-			String usuario = "librero";
-			String password = "Ageofempires2";
-			
-			// Ejecutamod una consulta SQL
-			con = DriverManager.getConnection(url, usuario, password);
-			
-			String sql = "SELECT * FROM libros WHERE autor = ?";
+
+			// Cargamos el driver JDBC
+			Class.forName("com.mysql.jdbc.Driver");
+
+			// Conectamos con la base de datos.
+//			String url = "jdbc:mysql://localhost/TiendaLibros";
+//			String usuario = "librero";
+//			String contrasenya = "Ageofempires2";
+
+			// Ejecutamos una consulta SQL
+			con = pool.getConnection();
+
+			String sql = "select * from libros where autor=?";
 			stmt = con.prepareStatement(sql);
 			stmt.setString(1, autor);
-			
+
 			ResultSet resultados = stmt.executeQuery();
-			
-			// Mostramos los resultados.
-			
-			out.println("<!DOCTYPE html>");
+
+			// Mostramos los resultados
 			out.println("<html>");
 			out.println("<head>");
 			out.println("<meta charset='utf-8'>");
 			out.println("<title>Consulta</title>");
 			out.println("</head>");
 			out.println("<body>");
-			out.println("<h1>Consulta de libros por consola</h1>");
-			out.println("<p>Libros escritos por " + autor + ": </p>");
-			
-			while(resultados.next()){
-				
-				out.print("Titulo: " + resultados.getString("titulo") + "<br>");
-				out.print("Precio: " + resultados.getString("precio") + "<br>");
-				out.print("Cantidad: " + resultados.getString("cantidad") + "<br>");
-				out.print("<hr>");
+			out.println("<h1>Consulta por autor</h1>");
+			out.println("<p>Los libros publicados por " + autor + "son:</p>");
+
+			while (resultados.next()) {
+
+				out.println("<hr>");
+				out.println("Título: " + resultados.getString("titulo")
+						+ "<br>");
+				out.println("Precio: " + resultados.getString("precio")
+						+ "<br>");
+				out.println("Cantidad: " + resultados.getString("cantidad")
+						+ "<br>");
+
+				out.println("<hr>");
 			}
-			
+
 			out.println("</body>");
 			out.println("</html>");
-			
-			
-			
-			
-			
-			
-		} catch (ClassNotFoundException | SQLException e) {
-			System.out.println("ERROR EN LA CONEXION A LA");
+
+		} catch (Exception e) {
+			System.out.println("ERROR EN LA CONEXIÓN A LA BASE DE DATOS");
 			e.printStackTrace();
-		} finally {
-			
+		}finally{
 			try {
 				con.close();
-				stmt.close();
 			} catch (SQLException e) {
-				System.out.println("ERROR AL CREAR LA BASE DE DATOS");
+				System.out.println("ERROR AL CERRAR A LA BASE DE DATOS");
 				e.printStackTrace();
 			}
-			
 		}
-		
+
 	}
 
-
-	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+	protected void doPost(HttpServletRequest request,
+			HttpServletResponse response) throws ServletException, IOException {
 
 	}
 
